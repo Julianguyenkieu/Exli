@@ -32,24 +32,40 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
     /* Fügt allfällige Bilder ein */
-    function getExperimentImage(experiment) {
+    async function getExperimentImage(experimentTitle) {
+        const folder = "Bilder";
+        const response = await fetch(
+            `https://api.github.com/repos/julianguyenkieu/exli/contents/${encodeURIComponent(folder)}`);
 
-        const title = (experiment["Titel"] || "").trim();
 
-        if (!title) {
-            return "";
+        if (!response.ok) {
+            console.error("Bilder konnten nicht geladen werden.");
+            return [];
         }
 
-        const imagePath = `Bilder/${title}.png`;
+        const files = await response.json();
 
-        return `
-            <img
-                src="${imagePath}"
-                alt="${escapeHTML(title)}"
-                class="experiment-image"
-                onerror="this.remove()"
-            >
-        `;
+        const title = experimentTitle.toLowerCase();
+
+        const matchingFiles = files.filter(file =>
+            file.type === "file" &&
+            file.name.toLowerCase().includes(title))
+        console.log("Matching files for experiment '" + experimentTitle + "':", matchingFiles);
+        return matchingFiles.map(file => ` <img src="${file.download_url}" alt="${escapeHTML(file.name)}" class="experiment-image" > `).join("");
+
+        //if (!title) {
+        //    return "";
+        //}
+
+        //const imagePath = Bilder/${title}.png;
+        //return `
+        //    <img
+        //        src="${imagePath}"
+        //        alt="${escapeHTML(title)}"
+        //        class="experiment-image"
+        //        onerror="this.remove()"
+        //    >
+        //`;
     }
 
     async function findDocuments(experimentTitle) {
@@ -57,8 +73,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const folder = "Dokumente";
 
         const response = await fetch(
-            `https://api.github.com/repos/julianguyenkieu/exli/contents/${folder}`
-        );
+            `https://api.github.com/repos/julianguyenkieu/exli/contents/${encodeURIComponent(folder)}`);
+
 
         if (!response.ok) {
             console.error("Dokumente konnten nicht geladen werden.");
@@ -132,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const title = experiment["Titel"] || "Ohne Titel";
         
         const documents = await findDocuments(title);
-
+        const images = await getExperimentImage(experiment["Titel"]);
         content.innerHTML = `
 
             <button id="back-to-topic">
@@ -238,30 +254,14 @@ document.addEventListener("DOMContentLoaded", () => {
                         : ""
                 }
 
-                ${
-                    experiment["Bild-/Videoangaben"] || getExperimentImage(experiment)
-                        ? `
-                            <section>
-                                <h3>Bild-/Videoangaben</h3>
-                
-                                ${
-                                    experiment["Bild-/Videoangaben"]
-                                        ? `
-                                            <p>
-                                                ${formatText(
-                                                    experiment["Bild-/Videoangaben"]
-                                                )}
-                                            </p>
-                                          `
-                                        : ""
-                                }
-                            
-                                ${getExperimentImage(experiment)}
-                            
-                            </section>
-                          `
-                        : ""
-                }
+                ${ experiment["Bild-/Videoangaben"] 
+                    ? `
+                        <section> 
+                            <h3>Bild-/Videoangaben</h3> 
+                            <p> 
+                                ${formatText( experiment["Bild-/Videoangaben"] )} 
+                            </p> ${images} 
+                        </section> ` : "" }
 
                 ${
                     experiment["Bemerkungen"]
@@ -301,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     ${documents.map(document => `
                                         <li>
                                             <a
-                                                href="${document.download_url}"
+                                                href="Dokumente/${encodeURIComponent(document.name)}"
                                                 download
                                             >
                                                 ${escapeHTML(document.name)}
